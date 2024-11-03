@@ -14,3 +14,4 @@ sudo ./add_server.sh wg_test 10.8.1.0 12345
 sudo ./add_client.sh wg_test
 ```
 6. Client config will be in current folder `./<server_name>_client_<client_ip>.conf`
+7. Start your server via `awg-quick up <server_name>`. To stop run `awg-quick down <server_name>`
