@@ -89,5 +89,5 @@ export AWG_H4
 export PATH_HELPERS
 
 envsubst <./templates/server.conf.tpl >"$PATH_BASE/$SERVER_NAME.conf"
-printf "\n Starting server $SERVER_NAME\n"
+printf "\nStarting server $SERVER_NAME\n"
 awg-quick up "$SERVER_NAME"
