@@ -79,9 +79,11 @@ export SERVER_IP_PUB
 export SERVER_PORT
 export SERVER_SUBNET
 
+mkdir ./clients
+
 printf "\nClient config:"
 printf "\n##############\n\n"
-envsubst <./client.conf.tpl | tee "$SERVER_NAME"_client_"$CLIENT_IP".conf
+envsubst <./client.conf.tpl | tee ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf
 printf "\n##############\n\n"
 
 awg | grep "^interface: $SERVER_NAME$" && printf "Restarting interface\n" && awg-quick down "$SERVER_NAME" && awg-quick up "$SERVER_NAME"
