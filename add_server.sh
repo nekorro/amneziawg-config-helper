@@ -1,7 +1,7 @@
 #!/bin/bash
-
+set -e
 if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root"
+  echo "Run via sudo"
   exit
 fi
 
@@ -83,3 +83,4 @@ export AWG_H4
 export PATH_HELPERS
 
 envsubst <./server.conf.tpl >"$PATH_BASE/$SERVER_NAME.conf"
+awg-quick up "$SERVER_NAME"
