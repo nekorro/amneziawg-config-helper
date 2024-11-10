@@ -79,7 +79,7 @@ export SERVER_IP_PUB
 export SERVER_PORT
 export SERVER_SUBNET
 
-mkdir ./clients
+mkdir -p ./clients
 
 printf "\nClient config:"
 printf "\n##############\n\n"
