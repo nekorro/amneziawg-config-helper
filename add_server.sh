@@ -66,8 +66,8 @@ export IFACE
 export SUBNET
 
 mkdir -p "$PATH_HELPERS"
-envsubst <./add-nat-routing.sh.tpl >"$PATH_HELPERS"/add-nat-routing.sh
-envsubst <./remove-nat-routing.sh.tpl >"$PATH_HELPERS"/remove-nat-routing.sh
+envsubst <./templates/add-nat-routing.sh.tpl >"$PATH_HELPERS"/add-nat-routing.sh
+envsubst <./templates/remove-nat-routing.sh.tpl >"$PATH_HELPERS"/remove-nat-routing.sh
 chmod +x "$PATH_HELPERS"/add-nat-routing.sh
 chmod +x "$PATH_HELPERS"/remove-nat-routing.sh
 
@@ -82,5 +82,5 @@ export AWG_H3
 export AWG_H4
 export PATH_HELPERS
 
-envsubst <./server.conf.tpl >"$PATH_BASE/$SERVER_NAME.conf"
+envsubst <./templates/server.conf.tpl >"$PATH_BASE/$SERVER_NAME.conf"
 awg-quick up "$SERVER_NAME"

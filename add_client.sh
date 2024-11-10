@@ -52,7 +52,7 @@ export PRESHARED_KEY
 export CLIENT_PUB
 export CLIENT_IP
 
-envsubst <./peer.part.tpl >> "$PATH_SERVER_CONFIG"
+envsubst <./templates/peer.part.tpl >> "$PATH_SERVER_CONFIG"
 
 AWG_JC=$(echo "$SERVER_CONFIG" | grep "Jc = " | awk '{print $3}')
 AWG_JMIN=$(echo "$SERVER_CONFIG" | grep "Jmin = " | awk '{print $3}')
@@ -83,7 +83,7 @@ mkdir ./clients
 
 printf "\nClient config:"
 printf "\n##############\n\n"
-envsubst <./client.conf.tpl | tee ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf
+envsubst <./templates/client.conf.tpl | tee ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf
 printf "\n##############\n\n"
 
 awg | grep "^interface: $SERVER_NAME$" && printf "Restarting interface\n" && awg-quick down "$SERVER_NAME" && awg-quick up "$SERVER_NAME"
