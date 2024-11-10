@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+
 if [ "$EUID" -ne 0 ]; then
   echo "Run via sudo"
   exit
@@ -79,6 +79,9 @@ export SERVER_IP_PUB
 export SERVER_PORT
 export SERVER_SUBNET
 
+printf "\n\nClient config:\n"
+printf "\n#####\n"
 envsubst <./client.conf.tpl | tee "$SERVER_NAME"_client_"$CLIENT_IP".conf
+printf "\n#####\n"
 
-awg | grep "^interface: $SERVER_NAME$" && awg-quick down "$SERVER_NAME" && awg-quick up "$SERVER_NAME"
+awg | grep "^interface: $SERVER_NAME$" && printf "\nRestarting interface\n" && awg-quick down "$SERVER_NAME" && awg-quick up "$SERVER_NAME"
