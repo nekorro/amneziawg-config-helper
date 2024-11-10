@@ -29,6 +29,12 @@ if ((SERVER_PORT <= 1024 || SERVER_PORT >= 32768)); then
   exit 1
 fi
 
+if ss -nul | awk '{print $4}' | grep -q ":$SERVER_PORT"; then
+  echo "Server port already in use, choose another port"
+  exit 1
+fi
+
+
 PATH_BASE="/etc/amnezia/amneziawg"
 PATH_CONFIG="$PATH_BASE/$SERVER_NAME.conf"
 PATH_KEY="$PATH_BASE/$SERVER_NAME.key"
