@@ -10,7 +10,7 @@ echo "net.ipv4.ip_forward = 1" >/etc/sysctl.d/00-amnezia.conf
 # Add deb-src source
 cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources.bak
 cat /etc/apt/sources.list.d/ubuntu.sources.bak | grep -v "^#" | sed "s/^Types: deb$/Types: deb-src/" >>/etc/apt/sources.list.d/ubuntu.sources
-#apt update -y && apt upgrade -y
+apt update -y && apt upgrade -y
 # Install awg
-#add-apt-repository -y ppa:amnezia/ppa && apt install -y amneziawg
-#apt install xxd
+add-apt-repository -y ppa:amnezia/ppa && apt install -y amneziawg
+apt install xxd
