@@ -2,7 +2,11 @@
 set -e
 if [ "$EUID" -ne 0 ]; then
   echo "Run via sudo"
-  exit
+  exit 1
+fi
+if ! awg --version; then
+  echo "awg not installed, run ./install-prereq.sh"
+  exit 1
 fi
 
 SERVER_NAME=$1
