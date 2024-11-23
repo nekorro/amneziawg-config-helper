@@ -18,7 +18,7 @@ sudo ./add_client.sh wg_test
 ```
 6. Client config will be printed and saved in `./clients` folder `./clients/<server_name>_client_<client_ip>.conf`
 
-Manege your servers via `awg-quick`
+Manage your servers via `awg-quick`
 ```
 awg-quick up <server_name> # To start server
 awg-quick down <server_name> # To stop server
