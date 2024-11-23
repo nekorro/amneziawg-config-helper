@@ -80,10 +80,11 @@ export SERVER_PORT
 export SERVER_SUBNET
 
 mkdir -p ./clients
+envsubst <./templates/client.conf.tpl > ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf
+awg | grep -q "^interface: $SERVER_NAME$" && printf "Restarting server $SERVER_NAME\n" && awg-quick down "$SERVER_NAME" && awg-quick up "$SERVER_NAME"
 
 printf "\nClient config:"
 printf "\n##############\n\n"
-envsubst <./templates/client.conf.tpl | tee ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf
+cat ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf
 printf "\n##############\n\n"
-
-awg | grep -q "^interface: $SERVER_NAME$" && printf "Restarting server $SERVER_NAME\n" && awg-quick down "$SERVER_NAME" && awg-quick up "$SERVER_NAME"
+cat ./clients/"$SERVER_NAME"_client_"$CLIENT_IP".conf | qrencode -t ANSI256UTF8
