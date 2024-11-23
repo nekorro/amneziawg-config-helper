@@ -16,3 +16,4 @@ apt update -y
 # Install awg
 add-apt-repository -y ppa:amnezia/ppa && apt install -y amneziawg
 apt install xxd
+apt install qrencode
