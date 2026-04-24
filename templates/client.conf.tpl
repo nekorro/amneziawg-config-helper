@@ -1,5 +1,6 @@
 [Interface]
-PrivateKey = $CLIENT_KEY 
+PrivateKey = $CLIENT_KEY
+PublicKey = $CLIENT_PUB
 Address = $CLIENT_IP/32
 DNS = 1.1.1.1, 1.0.0.1
 MTU = 1420
