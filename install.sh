@@ -25,12 +25,12 @@ apt-get install -y \
 	git \
 	linux-headers-$(uname -r) \
     make \
+	iptables \
+	iproute2 \
 	2>&1
 	# build-essential \
 	# pkg-config \
 	# libmnl-dev \
-	# iptables \
-	# iproute2 \
 	# iproute2-doc \
 	# conntrack \
 	# curl \
