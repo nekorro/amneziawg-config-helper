@@ -20,6 +20,7 @@ log "Kernel: $(uname -r)"
 log "--- Обновление системы и установка зависимостей ---"
 apt-get update
 apt-get install -y \
+    gcc \
 	xxd \
 	qrencode \
 	git \
