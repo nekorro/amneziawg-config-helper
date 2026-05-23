@@ -120,6 +120,12 @@ export PATH_HELPERS
 
 envsubst <./templates/server.conf.tpl >"$PATH_CONFIG"
 
+# If chained, disable awg-quick automatic routing (it hijacks all host traffic)
+# and handle routing manually via PostUp/PostDown scripts
+if [ "$CHAINED" -eq 1 ]; then
+  sed -i '/^\[Interface\]/a Table = off' "$PATH_CONFIG"
+fi
+
 # If chained, generate exit-peer and append [Peer] block to server config
 if [ "$CHAINED" -eq 1 ]; then
   EXIT_KEY=$(awg genkey)
