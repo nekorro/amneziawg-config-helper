@@ -17,5 +17,5 @@ ip route add $SUBNET dev $SERVER_NAME
 # Policy routing: packets arriving ON the AWG interface (from VPN clients)
 # get routed back through it (cryptokey routing picks the exit-peer).
 # Server's own traffic (SSH, etc.) is locally originated — has no iif — unaffected.
-ip route add default dev $SERVER_NAME table 200
-ip rule add iif $SERVER_NAME table 200 priority 100
+ip route add default dev $SERVER_NAME table $SERVER_PORT
+ip rule add iif $SERVER_NAME table $SERVER_PORT priority 100
