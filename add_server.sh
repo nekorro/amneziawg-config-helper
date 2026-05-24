@@ -87,25 +87,29 @@ umask 077
 echo -n "$SERVER_KEY" >"$PATH_KEY"
 echo -n "$SERVER_PUB" >"$PATH_PUB"
 
-export IPT
 export SERVER_NAME
 export SERVER_PORT
-export IFACE
 export SUBNET
 
 mkdir -p "$PATH_HELPERS"
 
 if [ "$CHAINED" -eq 1 ]; then
   EXIT_PEER_IP="${SERVER_SUBNET%.*}.2"
+  export IPT=$(command -v iptables)
+  export IFACE
   export EXIT_PEER_IP
-  envsubst <./templates/add-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/add-nat-routing.sh
-  envsubst <./templates/remove-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/remove-nat-routing.sh
+  envsubst <./templates/add-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst <./templates/remove-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
 else
-  envsubst <./templates/add-nat-routing.sh.tpl >"$PATH_HELPERS"/add-nat-routing.sh
-  envsubst <./templates/remove-nat-routing.sh.tpl >"$PATH_HELPERS"/remove-nat-routing.sh
+  export VPN_IF="$SERVER_NAME"
+  envsubst '$VPN_IF $SUBNET' <./templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst '$VPN_IF $SUBNET' <./templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
+  # Server-specific: accept incoming UDP on listen port
+  echo 'iptables -I INPUT 1 -i "$IFACE" -p udp --dport '"$SERVER_PORT"' -j ACCEPT' >>"$PATH_HELPERS"/add-nat.sh
+  echo 'iptables -D INPUT -i "$IFACE" -p udp --dport '"$SERVER_PORT"' -j ACCEPT' >>"$PATH_HELPERS"/remove-nat.sh
 fi
-chmod +x "$PATH_HELPERS"/add-nat-routing.sh
-chmod +x "$PATH_HELPERS"/remove-nat-routing.sh
+chmod +x "$PATH_HELPERS"/add-nat.sh
+chmod +x "$PATH_HELPERS"/remove-nat.sh
 
 export SERVER_KEY
 export SERVER_ADDRESS
@@ -148,14 +152,15 @@ if [ "$CHAINED" -eq 1 ]; then
 
   EXIT_NODE_DIR="./clients/${SERVER_NAME}_exit_node"
   EXIT_IF_NAME="${SERVER_NAME}-exit"
-  EXIT_HELPERS_PATH="/etc/amnezia/amneziawg/helpers/${EXIT_IF_NAME}"
+  HELPERS_PATH="/etc/amnezia/amneziawg/helpers/${EXIT_IF_NAME}"
   export EXIT_IF_NAME
-  export EXIT_HELPERS_PATH
+  export HELPERS_PATH
+  export VPN_IF="$EXIT_IF_NAME"
 
   mkdir -p "$EXIT_NODE_DIR"
   envsubst <./templates/client-exit.conf.tpl >"${EXIT_NODE_DIR}/${EXIT_IF_NAME}.conf"
-  envsubst <./templates/exit-node-add-nat.sh.tpl >"${EXIT_NODE_DIR}/add-nat.sh"
-  envsubst <./templates/exit-node-remove-nat.sh.tpl >"${EXIT_NODE_DIR}/remove-nat.sh"
+  envsubst '$VPN_IF $SUBNET' <./templates/add-nat.sh.tpl >"${EXIT_NODE_DIR}/add-nat.sh"
+  envsubst '$VPN_IF $SUBNET' <./templates/remove-nat.sh.tpl >"${EXIT_NODE_DIR}/remove-nat.sh"
   chmod +x "${EXIT_NODE_DIR}/add-nat.sh" "${EXIT_NODE_DIR}/remove-nat.sh"
 
   printf "\nExit-node files saved to %s/\n" "$EXIT_NODE_DIR"
@@ -165,7 +170,7 @@ if [ "$CHAINED" -eq 1 ]; then
   printf "\nOn the exit node:\n"
   printf "  1. Install amneziawg\n"
   printf "  2. Copy %s.conf to /etc/amnezia/amneziawg/\n" "$EXIT_IF_NAME"
-  printf "  3. mkdir -p %s && copy add-nat.sh, remove-nat.sh there\n" "$EXIT_HELPERS_PATH"
+  printf "  3. mkdir -p %s && copy add-nat.sh, remove-nat.sh there\n" "$HELPERS_PATH"
   printf "  4. awg-quick up %s\n" "$EXIT_IF_NAME"
 fi
 
