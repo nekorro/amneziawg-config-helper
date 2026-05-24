@@ -1,5 +1,5 @@
 
 [Peer]
 PresharedKey = $PRESHARED_KEY
-PublicKey = $CLIENT_PUB
-AllowedIPs = $CLIENT_IP/32
+PublicKey = $PEER_PUB
+AllowedIPs = $PEER_IP/32
