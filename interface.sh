@@ -168,10 +168,10 @@ if [ "$ACTION" = "add-exit" ]; then
   umask 077
   mkdir -p "$PATH_HELPERS"
 
-  export VPN_IF="$IF_NAME"
+  export IF_NAME
   export SUBNET
-  envsubst '$VPN_IF $SUBNET' <"$SCRIPT_DIR"/templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
-  envsubst '$VPN_IF $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
+  envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
   chmod +x "$PATH_HELPERS"/add-nat.sh "$PATH_HELPERS"/remove-nat.sh
 
   cat >"$PATH_CONFIG" <<EOF
@@ -245,12 +245,6 @@ if [ -f "$PATH_CONFIG" ]; then
   exit 1
 fi
 
-IFACE=$(ip route show default | awk '{print $5; exit}')
-if [ -z "$IFACE" ]; then
-  echo "Cannot detect default network interface"
-  exit 1
-fi
-
 IF_ADDRESS=${SUBNET_BASE%.*}.1
 SUBNET=${SUBNET_BASE%.*}.0/24
 
@@ -279,18 +273,12 @@ mkdir -p "$PATH_HELPERS"
 
 if [ "$CHAINED" -eq 1 ]; then
   EXIT_PEER_IP="${SUBNET_BASE%.*}.2"
-  export IPT=$(command -v iptables)
-  export IFACE
   export EXIT_PEER_IP
-  # Chained templates still use SERVER_NAME/SERVER_PORT for iptables rules
-  export SERVER_NAME="$IF_NAME"
-  export SERVER_PORT="$LISTEN_PORT"
-  envsubst <"$SCRIPT_DIR"/templates/add-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
-  envsubst <"$SCRIPT_DIR"/templates/remove-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
+  envsubst '$IF_NAME $LISTEN_PORT $SUBNET' <"$SCRIPT_DIR"/templates/add-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst '$IF_NAME $LISTEN_PORT $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
 else
-  export VPN_IF="$IF_NAME"
-  envsubst '$VPN_IF $SUBNET' <"$SCRIPT_DIR"/templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
-  envsubst '$VPN_IF $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
+  envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
   echo 'iptables -I INPUT 1 -i "$IFACE" -p udp --dport '"$LISTEN_PORT"' -j ACCEPT' >>"$PATH_HELPERS"/add-nat.sh
   echo 'iptables -D INPUT -i "$IFACE" -p udp --dport '"$LISTEN_PORT"' -j ACCEPT 2>/dev/null || true' >>"$PATH_HELPERS"/remove-nat.sh
 fi
@@ -348,7 +336,7 @@ if [ "$CHAINED" -eq 1 ]; then
   printf "    --jc %s --jmin 40 --jmax 70 \\\\\n" "$AWG_JC"
   printf "    --s1 %s --s2 %s --s3 %s --s4 %s \\\\\n" "$AWG_S1" "$AWG_S2" "$AWG_S3" "$AWG_S4"
   printf "    --h1 %s --h2 %s --h3 %s --h4 %s\n" "$AWG_H1" "$AWG_H2" "$AWG_H3" "$AWG_H4"
-  printf "\nClients will have no internet until the exit node connects.\n"
+  printf "\nPeers will have no internet until the exit node connects.\n"
 
   # Also save the command to a file for convenience
   cat >"${EXIT_NODE_DIR}/setup-exit-node.sh" <<SETUP_EOF

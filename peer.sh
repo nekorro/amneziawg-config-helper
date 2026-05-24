@@ -28,6 +28,11 @@ Examples:
 HELP
 }
 
+# Extract a value from the interface config
+config_get() {
+  echo "$IF_CONFIG" | grep "^$1 = " | awk '{print $3}'
+}
+
 # --- Parse arguments ---
 ACTION=""
 IF_NAME=""
@@ -86,6 +91,7 @@ if [ "$ACTION" = "remove" ]; then
   PEER_PRIV=$(grep "^PrivateKey = " "$PEER_CONF" | awk '{print $3}')
   PEER_PUB_DERIVED=$(echo "$PEER_PRIV" | awg pubkey)
 
+  # Remove [Peer] block matching this PublicKey
   awk -v pub="$PEER_PUB_DERIVED" '
     BEGIN { skip=0 }
     /^\[Peer\]/ {
@@ -129,9 +135,9 @@ fi
 IF_CONFIG=$(<"$PATH_IF_CONFIG")
 
 umask 077
-PEER_KEY=$(awg genkey)
+PRIVATE_KEY=$(awg genkey)
 PRESHARED_KEY=$(awg genpsk)
-PEER_PUB=$(echo "$PEER_KEY" | awg pubkey)
+PEER_PUB=$(echo "$PRIVATE_KEY" | awg pubkey)
 
 # Find next available IP; skip peers with AllowedIPs = 0.0.0.0/0 (exit-peer in chained mode)
 MAX_USED_HOST=1
@@ -139,7 +145,6 @@ while IFS= read -r line; do
   [ -z "$line" ] && continue
   IP_FIELD=$(echo "$line" | awk '{print $3}' | cut -d "/" -f 1)
   if [[ "$IP_FIELD" == "0.0.0.0" ]]; then
-    # Exit-peer in chained mode occupies .2
     if ((MAX_USED_HOST < 2)); then MAX_USED_HOST=2; fi
     continue
   fi
@@ -155,51 +160,40 @@ if ((NEXT_HOST > 254)); then
   exit 1
 fi
 
-IF_SUBNET=$(echo "$IF_CONFIG" | grep "Address = " | awk '{print $3}')
-SUBNET_PREFIX=${IF_SUBNET%.*}
-PEER_IP="$SUBNET_PREFIX.$NEXT_HOST"
-IF_PUB=$(<"$PATH_BASE/$IF_NAME.pub")
+INTERFACE_ADDRESS=$(config_get "Address")
+SUBNET_PREFIX=${INTERFACE_ADDRESS%.*}
+ADDRESS="$SUBNET_PREFIX.$NEXT_HOST"
+PUBLIC_KEY=$(<"$PATH_BASE/$IF_NAME.pub")
 ENDPOINT_HOST=$(wget -q -O - --timeout=10 ipinfo.io/ip) || { echo "ERROR: could not detect public IP"; exit 1; }
-LISTEN_PORT=$(echo "$IF_CONFIG" | grep "ListenPort = " | awk '{print $3}')
+LISTEN_PORT=$(config_get "ListenPort")
+ENDPOINT="$ENDPOINT_HOST:$LISTEN_PORT"
 
 if [ -z "$PEER_NAME" ]; then
-  PEER_NAME="peer_${PEER_IP}"
+  PEER_NAME="peer_${ADDRESS}"
 fi
 
 export PRESHARED_KEY
 export PEER_PUB
-export PEER_IP
+export PEER_IP="$ADDRESS"
 
 envsubst <"$SCRIPT_DIR"/templates/peer.part.tpl >>"$PATH_IF_CONFIG"
 
-AWG_JC=$(echo "$IF_CONFIG" | grep "^Jc = " | awk '{print $3}')
-AWG_JMIN=$(echo "$IF_CONFIG" | grep "^Jmin = " | awk '{print $3}')
-AWG_JMAX=$(echo "$IF_CONFIG" | grep "^Jmax = " | awk '{print $3}')
-AWG_S1=$(echo "$IF_CONFIG" | grep "^S1 = " | awk '{print $3}')
-AWG_S2=$(echo "$IF_CONFIG" | grep "^S2 = " | awk '{print $3}')
-AWG_S3=$(echo "$IF_CONFIG" | grep "^S3 = " | awk '{print $3}')
-AWG_S4=$(echo "$IF_CONFIG" | grep "^S4 = " | awk '{print $3}')
-AWG_H1=$(echo "$IF_CONFIG" | grep "^H1 = " | awk '{print $3}')
-AWG_H2=$(echo "$IF_CONFIG" | grep "^H2 = " | awk '{print $3}')
-AWG_H3=$(echo "$IF_CONFIG" | grep "^H3 = " | awk '{print $3}')
-AWG_H4=$(echo "$IF_CONFIG" | grep "^H4 = " | awk '{print $3}')
-
-export PEER_KEY
-export AWG_JC
-export AWG_JMIN
-export AWG_JMAX
-export AWG_S1
-export AWG_S2
-export AWG_S3
-export AWG_S4
-export AWG_H1
-export AWG_H2
-export AWG_H3
-export AWG_H4
-export IF_PUB
-export ENDPOINT_HOST
-export LISTEN_PORT
-export IF_SUBNET
+export PRIVATE_KEY
+export ADDRESS
+export PUBLIC_KEY
+export ENDPOINT
+export INTERFACE_ADDRESS
+export AWG_JC=$(config_get "Jc")
+export AWG_JMIN=$(config_get "Jmin")
+export AWG_JMAX=$(config_get "Jmax")
+export AWG_S1=$(config_get "S1")
+export AWG_S2=$(config_get "S2")
+export AWG_S3=$(config_get "S3")
+export AWG_S4=$(config_get "S4")
+export AWG_H1=$(config_get "H1")
+export AWG_H2=$(config_get "H2")
+export AWG_H3=$(config_get "H3")
+export AWG_H4=$(config_get "H4")
 
 PEER_CONF="$PEERS_DIR/${PEER_NAME}.conf"
 mkdir -p "$PEERS_DIR"
