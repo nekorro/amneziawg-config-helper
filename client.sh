@@ -149,6 +149,8 @@ while IFS= read -r line; do
   [ -z "$line" ] && continue
   IP_FIELD=$(echo "$line" | awk '{print $3}' | cut -d "/" -f 1)
   if [[ "$IP_FIELD" == "0.0.0.0" ]]; then
+    # Exit-peer in chained mode occupies .2
+    if ((MAX_USED_HOST < 2)); then MAX_USED_HOST=2; fi
     continue
   fi
   PEER_HOST=$(echo "$IP_FIELD" | cut -d "." -f 4)
