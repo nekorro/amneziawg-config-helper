@@ -139,18 +139,34 @@ if [ "$CHAINED" -eq 1 ]; then
   # Append exit-peer to server config
   envsubst <./templates/peer-exit.part.tpl >>"$PATH_CONFIG"
 
-  # Generate exit-peer client config
+  # Generate exit-peer client config and helper scripts
   SERVER_IP_PUB=$(wget -q -O - --timeout=10 ipinfo.io/ip) || { echo "WARNING: could not detect public IP, set Endpoint manually"; SERVER_IP_PUB="YOUR_SERVER_IP"; }
   export EXIT_KEY
   export SERVER_PUB
   export SERVER_IP_PUB
   export SERVER_PORT
 
-  mkdir -p ./clients
-  envsubst <./templates/client-exit.conf.tpl >"./clients/${SERVER_NAME}_exit_node.conf"
+  EXIT_NODE_DIR="./clients/${SERVER_NAME}_exit_node"
+  EXIT_IF_NAME="${SERVER_NAME}-exit"
+  EXIT_HELPERS_PATH="/etc/amnezia/amneziawg/helpers/${EXIT_IF_NAME}"
+  export EXIT_IF_NAME
+  export EXIT_HELPERS_PATH
 
-  printf "\nExit-peer config saved to ./clients/%s_exit_node.conf\n" "$SERVER_NAME"
+  mkdir -p "$EXIT_NODE_DIR"
+  envsubst <./templates/client-exit.conf.tpl >"${EXIT_NODE_DIR}/${EXIT_IF_NAME}.conf"
+  envsubst <./templates/exit-node-add-nat.sh.tpl >"${EXIT_NODE_DIR}/add-nat.sh"
+  envsubst <./templates/exit-node-remove-nat.sh.tpl >"${EXIT_NODE_DIR}/remove-nat.sh"
+  chmod +x "${EXIT_NODE_DIR}/add-nat.sh" "${EXIT_NODE_DIR}/remove-nat.sh"
+
+  printf "\nExit-node files saved to %s/\n" "$EXIT_NODE_DIR"
+  printf "  config:  %s.conf\n" "$EXIT_IF_NAME"
+  printf "  helpers: add-nat.sh, remove-nat.sh\n"
   printf "Exit-peer IP: %s (must connect before clients can reach internet)\n" "$EXIT_PEER_IP"
+  printf "\nOn the exit node:\n"
+  printf "  1. Install amneziawg\n"
+  printf "  2. Copy %s.conf to /etc/amnezia/amneziawg/\n" "$EXIT_IF_NAME"
+  printf "  3. mkdir -p %s && copy add-nat.sh, remove-nat.sh there\n" "$EXIT_HELPERS_PATH"
+  printf "  4. awg-quick up %s\n" "$EXIT_IF_NAME"
 fi
 
 printf "\nStarting server %s\n" "$SERVER_NAME"

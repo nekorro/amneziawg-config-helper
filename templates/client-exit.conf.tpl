@@ -12,6 +12,8 @@ H1 = $AWG_H1
 H2 = $AWG_H2
 H3 = $AWG_H3
 H4 = $AWG_H4
+PostUp = $EXIT_HELPERS_PATH/add-nat.sh
+PostDown = $EXIT_HELPERS_PATH/remove-nat.sh
 
 [Peer]
 PresharedKey = $EXIT_PSK
