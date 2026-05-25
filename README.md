@@ -272,6 +272,8 @@ sudo ./routes/fetch-country.sh RU > /etc/amnezia/amneziawg/routes/awg0/local/ru.
 sudo ./interface.sh --reload-routes --name awg0
 ```
 
+> **Warning:** Country-level lists can contain 8000+ prefixes, which significantly slows down interface startup and increases RAM usage (ipset is loaded into kernel memory). Prefer `fetch-iplist.opencck.sh` or manually crafted lists with only the services you need. Use `fetch-country.sh` only if you specifically need the entire country's IP space.
+
 ### Running multiple interfaces on one host
 
 You can run both an exit node and a chained interface on the same host. They don't interfere:
