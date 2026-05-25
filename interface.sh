@@ -30,10 +30,9 @@ Parameters (--add):
   --name      Interface name (max 30 chars)
   --subnet    VPN subnet base (e.g. 10.8.1.0); must be 10.x.x.x or 192.168.x.x
   --port      UDP listen port (1025-32767)
-  --chained   Forward traffic to exit-peer .2. By default all traffic goes
-              to exit node. Place CIDR lists (*.txt) in the routes directory
-              to selectively route only matching IPs via exit node;
-              the rest exits via MASQUERADE on this host.
+  --chained   Forward all traffic to exit-peer .2 by default.
+              Place CIDR lists (*.txt) in the routes directory to route
+              matching IPs directly via this host (.1) instead of exit node.
               Routes dir: /etc/amnezia/amneziawg/routes/<name>/
 
 Parameters (--add-exit):
@@ -132,7 +131,7 @@ if [ "$ACTION" = "reload-routes" ]; then
   fi
 
   ROUTES_DIR="$PATH_BASE/routes/$IF_NAME"
-  IPSET_NAME="${IF_NAME}_exit"
+  IPSET_NAME="${IF_NAME}_direct"
 
   # Collect CIDRs from routes directory
   CIDRS=""
@@ -407,12 +406,13 @@ if [ "$CHAINED" -eq 1 ]; then
   printf "    --h1 %s --h2 %s --h3 %s --h4 %s\n" "$AWG_H1" "$AWG_H2" "$AWG_H3" "$AWG_H4"
   printf "\n=== Routing ===\n"
   printf "Routes directory: %s\n" "$ROUTES_DIR"
-  printf "  Empty (default)  → all traffic exits via exit node (.2)\n"
-  printf "  With *.txt files → matching IPs exit via exit node, rest via this host (.1)\n"
+  printf "  All traffic goes through exit node (.2) by default.\n"
+  printf "  Place *.txt files with CIDRs to route those IPs directly via this host (.1).\n"
   printf "  Format: one CIDR per line, # for comments\n"
   printf "  Example presets in repo: routes/youtube.txt, routes/discord.txt\n"
   printf "  Copy presets: cp routes/youtube.txt %s/\n" "$ROUTES_DIR"
-  printf "  Apply changes: awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
+  printf "  Apply: sudo ./interface.sh --reload-routes --name %s\n" "$IF_NAME"
+  printf "  Or restart: awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
 
   # Also save the command to a file for convenience
   cat >"${EXIT_NODE_DIR}/setup-exit-node.sh" <<SETUP_EOF

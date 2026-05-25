@@ -109,7 +109,7 @@ When you create a chained interface, the script prints the exact `--add-exit` co
 sudo ./interface.sh --reload-routes --name <name>
 ```
 
-Hot-reloads the exit routes ipset from `/etc/amnezia/amneziawg/routes/<name>/` without restarting the interface or disconnecting peers. Only works when already in split-chained mode; switching between full-chain and split modes requires an interface restart.
+Hot-reloads the direct routes ipset from `/etc/amnezia/amneziawg/routes/<name>/` without restarting the interface or disconnecting peers. Only works when already in split-chained mode; switching between full-chain and split modes requires an interface restart.
 
 #### Remove an interface
 
@@ -212,17 +212,17 @@ Peers have no internet access until the exit node connects.
 
 ### Split-chained (selective routing)
 
-By default, chained mode routes all traffic through the exit node. To route only specific destinations through the exit node and exit everything else on the intermediate host:
+By default, chained mode routes **all** traffic through the exit node. To route specific destinations **directly** via the intermediate host (.1) instead of the exit node:
 
 1. Place `*.txt` files with CIDRs into the routes directory:
 
 ```bash
-# Copy a preset
+# Copy a preset — access YouTube directly via intermediate host
 sudo cp routes/youtube.txt /etc/amnezia/amneziawg/routes/awg0/
 
 # Or create your own
 sudo tee /etc/amnezia/amneziawg/routes/awg0/custom.txt <<EOF
-# Custom routes via exit node
+# These IPs exit directly via intermediate host, not via exit node
 203.0.113.0/24
 198.51.100.0/24
 EOF
