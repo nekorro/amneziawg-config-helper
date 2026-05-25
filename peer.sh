@@ -182,7 +182,7 @@ export PRIVATE_KEY
 export ADDRESS
 export PUBLIC_KEY
 export ENDPOINT
-export INTERFACE_ADDRESS
+export SUBNET="${SUBNET_PREFIX}.0/24"
 export AWG_JC=$(config_get "Jc")
 export AWG_JMIN=$(config_get "Jmin")
 export AWG_JMAX=$(config_get "Jmax")
