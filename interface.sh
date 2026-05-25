@@ -216,6 +216,11 @@ if [ "$ACTION" = "add-exit" ]; then
     exit 1
   fi
 
+  if ((${#IF_NAME} > 15)); then
+    echo "Interface name must be 15 characters or less (Linux limit)."
+    exit 1
+  fi
+
   PATH_CONFIG="$PATH_BASE/$IF_NAME.conf"
   PATH_HELPERS="$PATH_BASE/helpers/$IF_NAME"
 
@@ -286,8 +291,8 @@ if [ -z "$IF_NAME" ] || [ -z "$SUBNET_BASE" ] || [ -z "$LISTEN_PORT" ]; then
   exit 1
 fi
 
-if ((${#IF_NAME} > 30)); then
-  echo "Interface name length must be less than 30."
+if ((${#IF_NAME} > 15)); then
+  echo "Interface name must be 15 characters or less (Linux limit)."
   exit 1
 fi
 
