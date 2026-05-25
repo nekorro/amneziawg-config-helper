@@ -103,6 +103,14 @@ Creates an exit-node interface from the provided parameters (no key generation).
 
 When you create a chained interface, the script prints the exact `--add-exit` command to run on the exit node host — just copy and paste it.
 
+#### Reload exit routes
+
+```bash
+sudo ./interface.sh --reload-routes --name <name>
+```
+
+Hot-reloads the direct routes ipset from `/etc/amnezia/amneziawg/routes/<name>/local/` without restarting the interface or disconnecting peers. Only works when already in split-chained mode; switching between full-chain and split modes requires an interface restart.
+
 #### Remove an interface
 
 ```bash
@@ -202,6 +210,70 @@ A convenience script is also saved to `./clients/<name>/exit_node/setup-exit-nod
 
 Peers have no internet access until the exit node connects.
 
+### Split-chained (selective routing)
+
+By default, chained mode routes **all** traffic through the exit node. To route specific destinations **directly** via the intermediate host (.1) instead of the exit node:
+
+1. Place `*.txt` files with CIDRs into the routes directory:
+
+```bash
+# Copy a preset — access YouTube directly via intermediate host
+sudo cp routes/youtube.txt /etc/amnezia/amneziawg/routes/awg0/local/
+
+# Or create your own
+sudo tee /etc/amnezia/amneziawg/routes/awg0/local/custom.txt <<EOF
+# These IPs exit directly via intermediate host, not via exit node
+203.0.113.0/24
+198.51.100.0/24
+EOF
+```
+
+2. Apply the routes (no peer disconnection):
+
+```bash
+sudo ./interface.sh --reload-routes --name awg0
+```
+
+Or restart the interface if switching between full-chain and split modes:
+
+```bash
+sudo awg-quick down awg0 && sudo awg-quick up awg0
+```
+
+To switch back to full-chain (all traffic via exit node), remove all files from the routes directory and restart.
+
+Preset route files and fetch scripts are shipped in the `routes/` directory of this repo.
+
+#### Fetching routes from iplist.opencck.org
+
+The `fetch-iplist.opencck.sh` script downloads IP ranges for service groups from [iplist.opencck.org](https://github.com/rekryt/iplist):
+
+```bash
+# All Russian services (default: groups vk, russia, yandex)
+sudo ./routes/fetch-iplist.opencck.sh > /etc/amnezia/amneziawg/routes/awg0/local/ru-services.txt
+
+# Specific groups
+sudo ./routes/fetch-iplist.opencck.sh --group vk --group yandex > /etc/amnezia/amneziawg/routes/awg0/local/vk-yandex.txt
+
+# Global instance (blocked services)
+sudo ./routes/fetch-iplist.opencck.sh --base-url https://iplist.opencck.org --group youtube \
+  > /etc/amnezia/amneziawg/routes/awg0/local/youtube.txt
+
+# Apply
+sudo ./interface.sh --reload-routes --name awg0
+```
+
+#### Fetching routes by country
+
+The `fetch-country.sh` script downloads all IP ranges for a country from the 5 regional internet registries:
+
+```bash
+sudo ./routes/fetch-country.sh RU > /etc/amnezia/amneziawg/routes/awg0/local/ru.txt
+sudo ./interface.sh --reload-routes --name awg0
+```
+
+> **Warning:** Country-level lists can contain 8000+ prefixes, which significantly slows down interface startup and increases RAM usage (ipset is loaded into kernel memory). Prefer `fetch-iplist.opencck.sh` or manually crafted lists with only the services you need. Use `fetch-country.sh` only if you specifically need the entire country's IP space.
+
 ### Running multiple interfaces on one host
 
 You can run both an exit node and a chained interface on the same host. They don't interfere:
@@ -223,6 +295,13 @@ You can run both an exit node and a chained interface on the same host. They don
 │       ├── laptop.conf
 │       └── exit_node/      # Chained mode only
 │           └── setup-exit-node.sh
+├── routes/                 # Route presets and fetch scripts
+│   ├── example.txt
+│   ├── youtube.txt
+│   ├── discord.txt
+│   ├── cloudflare.txt
+│   ├── fetch-iplist.opencck.sh  # Fetch IPs by service group
+│   └── fetch-country.sh         # Fetch IPs by country code
 └── templates/              # envsubst templates
     ├── interface.conf.tpl
     ├── peer-client.conf.tpl
@@ -230,8 +309,9 @@ You can run both an exit node and a chained interface on the same host. They don
     ├── peer-exit.part.tpl
     ├── add-nat.sh.tpl
     ├── remove-nat.sh.tpl
-    ├── add-nat-routing-chained.sh.tpl
-    └── remove-nat-routing-chained.sh.tpl
+    ├── add-nat-chained.sh.tpl
+    ...
+    └── remove-nat-chained.sh.tpl
 ```
 
 Configs and keys are stored in `/etc/amnezia/amneziawg/`. NAT helper scripts go to `/etc/amnezia/amneziawg/helpers/<interface_name>/`.

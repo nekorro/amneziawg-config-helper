@@ -15,12 +15,14 @@ Usage:
                                  --jc <n> --jmin <n> --jmax <n>
                                  --s1 <n> --s2 <n> --s3 <n> --s4 <n>
                                  --h1 <n> --h2 <n> --h3 <n> --h4 <n>
+  sudo ./interface.sh --reload-routes --name <name>
   sudo ./interface.sh --remove   --name <name>
   sudo ./interface.sh --help
 
 Actions:
   --add       Create a new AWG interface (generates keys, config, NAT, starts it)
   --add-exit  Create an exit-node interface from parameters (no key generation)
+  --reload-routes  Reload exit routes from routes directory without restarting
   --remove    Stop and remove interface (config, keys, helpers, peer configs)
   --help      Show this help
 
@@ -28,7 +30,10 @@ Parameters (--add):
   --name      Interface name (max 30 chars)
   --subnet    VPN subnet base (e.g. 10.8.1.0); must be 10.x.x.x or 192.168.x.x
   --port      UDP listen port (1025-32767)
-  --chained   Forward traffic to exit-peer .2 instead of MASQUERADE
+  --chained   Forward all traffic to exit-peer .2 by default.
+              Place CIDR lists (*.txt) in the routes directory to route
+              matching IPs directly via this host (.1) instead of exit node.
+              Routes dir: /etc/amnezia/amneziawg/routes/<name>/
 
 Parameters (--add-exit):
   --name        Interface name
@@ -46,6 +51,7 @@ Parameters (--remove):
 Examples:
   sudo ./interface.sh --add --name awg0 --subnet 10.8.1.0 --port 12345
   sudo ./interface.sh --add --name awg1 --subnet 10.8.2.0 --port 12346 --chained
+  sudo ./interface.sh --reload-routes --name awg1
   sudo ./interface.sh --remove --name awg0
 HELP
 }
@@ -70,6 +76,7 @@ while [ $# -gt 0 ]; do
     --add)         ACTION="add" ;;
     --add-exit)    ACTION="add-exit" ;;
     --remove)      ACTION="remove" ;;
+    --reload-routes) ACTION="reload-routes" ;;
     --help|-h)     show_help; exit 0 ;;
     --name)        IF_NAME="$2"; shift ;;
     --subnet)      SUBNET_BASE="$2"; shift ;;
@@ -97,7 +104,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$ACTION" ]; then
-  echo "Error: specify --add, --add-exit, or --remove"
+  echo "Error: specify --add, --add-exit, --reload-routes, or --remove"
   show_help
   exit 1
 fi
@@ -109,6 +116,63 @@ fi
 if ! awg --version > /dev/null 2>&1; then
   echo "awg not installed, run ./install.sh"
   exit 1
+fi
+
+# --- Reload routes ---
+if [ "$ACTION" = "reload-routes" ]; then
+  if [ -z "$IF_NAME" ]; then
+    echo "Error: --name is required"
+    exit 1
+  fi
+
+  if ! awg show "$IF_NAME" > /dev/null 2>&1; then
+    echo "Interface $IF_NAME is not running."
+    exit 1
+  fi
+
+  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME/local"
+  IPSET_NAME="${IF_NAME}_direct"
+
+  # Collect CIDRs from routes directory
+  CIDRS=""
+  if [ -d "$ROUTES_DIR" ]; then
+    for f in "$ROUTES_DIR"/*.txt; do
+      [ -f "$f" ] || continue
+      while IFS= read -r line; do
+        line=$(echo "$line" | sed 's/#.*//' | tr -d ' ')
+        [ -z "$line" ] && continue
+        if [[ "$line" != */* ]]; then
+          line="$line/32"
+        fi
+        CIDRS="$CIDRS $line"
+      done < "$f"
+    done
+  fi
+
+  if [ -n "$CIDRS" ]; then
+    if ipset list "$IPSET_NAME" > /dev/null 2>&1; then
+      # Already in split mode — flush and reload ipset
+      ipset flush "$IPSET_NAME"
+    else
+      # Switching from full-chain to split — need full restart
+      echo "Interface is in full-chain mode. Restart to switch to split mode:"
+      printf "  awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
+      exit 1
+    fi
+    for cidr in $CIDRS; do
+      ipset add "$IPSET_NAME" "$cidr" -exist
+    done
+    printf "Reloaded %d routes for interface %s\n" "$(echo $CIDRS | wc -w)" "$IF_NAME"
+  else
+    if ipset list "$IPSET_NAME" > /dev/null 2>&1; then
+      echo "Routes directory is empty. Restart to switch to full-chain mode:"
+      printf "  awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
+      exit 1
+    else
+      echo "No routes to reload (already in full-chain mode)."
+    fi
+  fi
+  exit 0
 fi
 
 # --- Remove interface ---
@@ -133,6 +197,7 @@ if [ "$ACTION" = "remove" ]; then
   rm -f "$PATH_BASE/$IF_NAME.key"
   rm -f "$PATH_BASE/$IF_NAME.pub"
   rm -rf "$PATH_BASE/helpers/$IF_NAME"
+  rm -rf "$PATH_BASE/routes/$IF_NAME"
   rm -rf "$SCRIPT_DIR/clients/$IF_NAME"
 
   printf "Interface %s removed.\n" "$IF_NAME"
@@ -274,8 +339,11 @@ mkdir -p "$PATH_HELPERS"
 if [ "$CHAINED" -eq 1 ]; then
   EXIT_PEER_IP="${SUBNET_BASE%.*}.2"
   export EXIT_PEER_IP
-  envsubst '$IF_NAME $LISTEN_PORT $SUBNET' <"$SCRIPT_DIR"/templates/add-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
-  envsubst '$IF_NAME $LISTEN_PORT $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
+  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME/local"
+  export ROUTES_DIR
+  mkdir -p "$ROUTES_DIR"
+  envsubst '$IF_NAME $LISTEN_PORT $SUBNET $ROUTES_DIR' <"$SCRIPT_DIR"/templates/add-nat-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst '$IF_NAME $LISTEN_PORT $SUBNET $ROUTES_DIR' <"$SCRIPT_DIR"/templates/remove-nat-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
 else
   envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
   envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
@@ -336,7 +404,15 @@ if [ "$CHAINED" -eq 1 ]; then
   printf "    --jc %s --jmin 40 --jmax 70 \\\\\n" "$AWG_JC"
   printf "    --s1 %s --s2 %s --s3 %s --s4 %s \\\\\n" "$AWG_S1" "$AWG_S2" "$AWG_S3" "$AWG_S4"
   printf "    --h1 %s --h2 %s --h3 %s --h4 %s\n" "$AWG_H1" "$AWG_H2" "$AWG_H3" "$AWG_H4"
-  printf "\nPeers will have no internet until the exit node connects.\n"
+  printf "\n=== Routing ===\n"
+  printf "Routes directory: %s\n" "$ROUTES_DIR"
+  printf "  All traffic goes through exit node (.2) by default.\n"
+  printf "  Place *.txt files with CIDRs to route those IPs directly via this host (.1).\n"
+  printf "  Format: one CIDR per line, # for comments\n"
+  printf "  Example presets in repo: routes/youtube.txt, routes/discord.txt\n"
+  printf "  Copy presets: cp routes/youtube.txt %s/\n" "$ROUTES_DIR"
+  printf "  Apply: sudo ./interface.sh --reload-routes --name %s\n" "$IF_NAME"
+  printf "  Or restart: awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
 
   # Also save the command to a file for convenience
   cat >"${EXIT_NODE_DIR}/setup-exit-node.sh" <<SETUP_EOF

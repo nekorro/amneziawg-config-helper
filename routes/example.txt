@@ -1,0 +1,24 @@
+# Route preset file for AmneziaWG split-chained mode
+#
+# Place *.txt files in /etc/amnezia/amneziawg/routes/<interface_name>/local/
+# to route matching destinations DIRECTLY via the intermediate host (.1)
+# instead of through the exit node (.2).
+#
+# All other traffic goes through the exit node by default.
+#
+# Format:
+#   - One CIDR per line (e.g. 203.0.113.0/24)
+#   - Single IPs are treated as /32 (e.g. 8.8.8.8)
+#   - Lines starting with # are comments
+#   - Blank lines are ignored
+#
+# Apply changes without restart:
+#   sudo ./interface.sh --reload-routes --name <interface_name>
+#
+# Or restart the interface:
+#   awg-quick down <name> && awg-quick up <name>
+#
+# Example:
+# 203.0.113.0/24
+# 198.51.100.0/24
+# 8.8.8.8

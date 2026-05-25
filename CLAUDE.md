@@ -39,7 +39,7 @@ awg-quick down <name>
   - `peer.part.tpl` — Peer block appended to interface config for each new peer
   - `peer-exit.part.tpl` — Exit-peer block for chained mode
   - `add-nat.sh.tpl` / `remove-nat.sh.tpl` — Shared MASQUERADE NAT rules (runtime IFACE detection)
-  - `add-nat-routing-chained.sh.tpl` / `remove-nat-routing-chained.sh.tpl` — Chained mode forwarding rules
+  - `add-nat-chained.sh.tpl` / `remove-nat-chained.sh.tpl` — Chained mode: dynamic split/full routing via ipset
 
 ## Key Details
 
@@ -51,4 +51,6 @@ awg-quick down <name>
 - AWG obfuscation params: Jc, Jmin, Jmax, S1-S4, H1-H4 — can be overridden via CLI args
 - Templates use `envsubst` for variable substitution — variables must be exported before calling envsubst
 - Shared NAT templates use explicit var list (`envsubst '$VPN_IF $SUBNET'`) to avoid baking runtime vars
+- Chained routes dir: `/etc/amnezia/amneziawg/routes/<if_name>/local/` — empty = full-chain, with *.txt CIDRs = direct exit on .1
+- Split-chained uses ipset + iptables MARK + fwmark policy routing
 - `install.sh` logs are bilingual (Russian descriptions)

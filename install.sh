@@ -27,6 +27,7 @@ apt-get install -y \
 	linux-headers-$(uname -r) \
     make \
 	iptables \
+	ipset \
 	iproute2 \
 	2>&1
 	# build-essential \
