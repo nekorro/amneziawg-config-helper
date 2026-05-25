@@ -15,12 +15,14 @@ Usage:
                                  --jc <n> --jmin <n> --jmax <n>
                                  --s1 <n> --s2 <n> --s3 <n> --s4 <n>
                                  --h1 <n> --h2 <n> --h3 <n> --h4 <n>
+  sudo ./interface.sh --reload-routes --name <name>
   sudo ./interface.sh --remove   --name <name>
   sudo ./interface.sh --help
 
 Actions:
   --add       Create a new AWG interface (generates keys, config, NAT, starts it)
   --add-exit  Create an exit-node interface from parameters (no key generation)
+  --reload-routes  Reload exit routes from routes directory without restarting
   --remove    Stop and remove interface (config, keys, helpers, peer configs)
   --help      Show this help
 
@@ -50,6 +52,7 @@ Parameters (--remove):
 Examples:
   sudo ./interface.sh --add --name awg0 --subnet 10.8.1.0 --port 12345
   sudo ./interface.sh --add --name awg1 --subnet 10.8.2.0 --port 12346 --chained
+  sudo ./interface.sh --reload-routes --name awg1
   sudo ./interface.sh --remove --name awg0
 HELP
 }
@@ -74,6 +77,7 @@ while [ $# -gt 0 ]; do
     --add)         ACTION="add" ;;
     --add-exit)    ACTION="add-exit" ;;
     --remove)      ACTION="remove" ;;
+    --reload-routes) ACTION="reload-routes" ;;
     --help|-h)     show_help; exit 0 ;;
     --name)        IF_NAME="$2"; shift ;;
     --subnet)      SUBNET_BASE="$2"; shift ;;
@@ -101,7 +105,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$ACTION" ]; then
-  echo "Error: specify --add, --add-exit, or --remove"
+  echo "Error: specify --add, --add-exit, --reload-routes, or --remove"
   show_help
   exit 1
 fi
@@ -113,6 +117,63 @@ fi
 if ! awg --version > /dev/null 2>&1; then
   echo "awg not installed, run ./install.sh"
   exit 1
+fi
+
+# --- Reload routes ---
+if [ "$ACTION" = "reload-routes" ]; then
+  if [ -z "$IF_NAME" ]; then
+    echo "Error: --name is required"
+    exit 1
+  fi
+
+  if ! awg show "$IF_NAME" > /dev/null 2>&1; then
+    echo "Interface $IF_NAME is not running."
+    exit 1
+  fi
+
+  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME"
+  IPSET_NAME="${IF_NAME}_exit"
+
+  # Collect CIDRs from routes directory
+  CIDRS=""
+  if [ -d "$ROUTES_DIR" ]; then
+    for f in "$ROUTES_DIR"/*.txt; do
+      [ -f "$f" ] || continue
+      while IFS= read -r line; do
+        line=$(echo "$line" | sed 's/#.*//' | tr -d ' ')
+        [ -z "$line" ] && continue
+        if [[ "$line" != */* ]]; then
+          line="$line/32"
+        fi
+        CIDRS="$CIDRS $line"
+      done < "$f"
+    done
+  fi
+
+  if [ -n "$CIDRS" ]; then
+    if ipset list "$IPSET_NAME" > /dev/null 2>&1; then
+      # Already in split mode — flush and reload ipset
+      ipset flush "$IPSET_NAME"
+    else
+      # Switching from full-chain to split — need full restart
+      echo "Interface is in full-chain mode. Restart to switch to split mode:"
+      printf "  awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
+      exit 1
+    fi
+    for cidr in $CIDRS; do
+      ipset add "$IPSET_NAME" "$cidr" -exist
+    done
+    printf "Reloaded %d routes for interface %s\n" "$(echo $CIDRS | wc -w)" "$IF_NAME"
+  else
+    if ipset list "$IPSET_NAME" > /dev/null 2>&1; then
+      echo "Routes directory is empty. Restart to switch to full-chain mode:"
+      printf "  awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
+      exit 1
+    else
+      echo "No routes to reload (already in full-chain mode)."
+    fi
+  fi
+  exit 0
 fi
 
 # --- Remove interface ---
