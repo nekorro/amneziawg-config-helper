@@ -211,7 +211,6 @@ if [ "$ACTION" = "add-exit" ]; then
   if [ -z "$IF_NAME" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$IF_ADDRESS" ] || \
      [ -z "$SUBNET_BASE" ] || [ -z "$ENDPOINT" ] || [ -z "$PEER_PUB" ] || \
      [ -z "$PSK" ] || [ -z "$AWG_JC" ] || [ -z "$AWG_S1" ] || [ -z "$AWG_S2" ] || \
-     [ -z "$AWG_S3" ] || [ -z "$AWG_S4" ] || \
      [ -z "$AWG_H1" ] || [ -z "$AWG_H2" ] || [ -z "$AWG_H3" ] || [ -z "$AWG_H4" ]; then
     echo "Error: all parameters are required for --add-exit (see --help)"
     exit 1
