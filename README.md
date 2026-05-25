@@ -246,17 +246,30 @@ Preset route files and fetch scripts are shipped in the `routes/` directory of t
 
 #### Fetching routes from iplist.opencck.org
 
-The `fetch-iplist.opencck.sh` script downloads IP ranges for service groups from [iplist.opencck.org](https://github.com/rekryt/iplist):
+The `fetch-iplist.opencck.sh` script downloads IP ranges for services and groups from [iplist.opencck.org](https://github.com/rekryt/iplist):
 
 ```bash
+# List all available services (~87 Russian services)
+./routes/fetch-iplist.opencck.sh --list
+
 # All Russian services (default: groups vk, russia, yandex)
-sudo ./routes/fetch-iplist.opencck.sh > /etc/amnezia/amneziawg/routes/awg0/local/ru-services.txt
+./routes/fetch-iplist.opencck.sh > /etc/amnezia/amneziawg/routes/awg0/local/ru-services.txt
 
-# Specific groups
-sudo ./routes/fetch-iplist.opencck.sh --group vk --group yandex > /etc/amnezia/amneziawg/routes/awg0/local/vk-yandex.txt
+# Specific services
+./routes/fetch-iplist.opencck.sh --site ozon.ru --site cdek.ru \
+  > /etc/amnezia/amneziawg/routes/awg0/local/shopping.txt
 
-# Global instance (blocked services)
-sudo ./routes/fetch-iplist.opencck.sh --base-url https://iplist.opencck.org --group youtube \
+# By group
+./routes/fetch-iplist.opencck.sh --group yandex \
+  > /etc/amnezia/amneziawg/routes/awg0/local/yandex.txt
+
+# Mix groups and individual services
+./routes/fetch-iplist.opencck.sh --group yandex --site ozon.ru --site cdek.ru \
+  > /etc/amnezia/amneziawg/routes/awg0/local/ru-custom.txt
+
+# Global instance (for blocked services like YouTube, Discord, etc.)
+./routes/fetch-iplist.opencck.sh --base-url https://iplist.opencck.org --list
+./routes/fetch-iplist.opencck.sh --base-url https://iplist.opencck.org --site youtube.com \
   > /etc/amnezia/amneziawg/routes/awg0/local/youtube.txt
 
 # Apply
