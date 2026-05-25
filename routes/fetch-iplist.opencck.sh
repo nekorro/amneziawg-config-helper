@@ -3,22 +3,30 @@
 #
 # Usage:
 #   # All Russian service groups (default)
-#   ./routes/fetch-opencck.sh > /etc/amnezia/amneziawg/routes/<if_name>/local/ru-services.txt
+#   ./routes/fetch-iplist.opencck.sh
 #
-#   # Custom instance and groups
-#   ./routes/fetch-opencck.sh --base-url https://iplist.opencck.org --group youtube --group google
+#   # Custom groups
+#   ./routes/fetch-iplist.opencck.sh --group vk --group yandex
+#
+#   # Different instance
+#   ./routes/fetch-iplist.opencck.sh --base-url https://iplist.opencck.org --group youtube
 #
 #   sudo ./interface.sh --reload-routes --name <if_name>
 
 set -euo pipefail
 
 BASE_URL="https://russia.iplist.opencck.org"
-GROUPS=()
+GROUP_QUERY=""
+GROUP_LIST=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --base-url) BASE_URL="$2"; shift ;;
-    --group)    GROUPS+=("$2"); shift ;;
+    --base-url)
+      BASE_URL="$2"; shift; shift ;;
+    --group)
+      GROUP_QUERY="${GROUP_QUERY}&group=$2"
+      GROUP_LIST="${GROUP_LIST:+$GROUP_LIST, }$2"
+      shift; shift ;;
     --help|-h)
       echo "Usage: $0 [--base-url <url>] [--group <name>]..."
       echo ""
@@ -33,21 +41,17 @@ while [ $# -gt 0 ]; do
       exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
-  shift
 done
 
-# Default groups for russia instance
-if [ ${#GROUPS[@]} -eq 0 ]; then
-  GROUPS=(vk russia yandex)
+# Default groups
+if [ -z "$GROUP_QUERY" ]; then
+  GROUP_QUERY="&group=vk&group=russia&group=yandex"
+  GROUP_LIST="vk, russia, yandex"
 fi
 
-# Build query string
-QUERY="format=text&data=cidr4"
-for g in "${GROUPS[@]}"; do
-  QUERY="${QUERY}&group=${g}"
-done
+QUERY="format=text&data=cidr4${GROUP_QUERY}"
 
-echo "# iplist.opencck.org — groups: ${GROUPS[*]}"
+echo "# iplist.opencck.org — groups: ${GROUP_LIST}"
 echo "# Source: ${BASE_URL}/?${QUERY}"
 echo "# Generated: $(date -u '+%Y-%m-%d %H:%M UTC')"
 
