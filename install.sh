@@ -63,6 +63,20 @@ log "amneziawg-tools installed: $(awg --version 2>/dev/null || echo 'ok')"
 
 # -----------------------------------------------------------------------------
 log "--- Building kernel module ---"
+
+# Remove old DKMS-installed module if present (it takes priority over manual builds)
+DKMS_MODULE="/lib/modules/$KERNEL/updates/dkms/amneziawg.ko"
+for ext in "" ".zst" ".xz" ".gz"; do
+  if [ -f "${DKMS_MODULE}${ext}" ]; then
+    log "Removing old DKMS module: ${DKMS_MODULE}${ext}"
+    rm -f "${DKMS_MODULE}${ext}"
+  fi
+done
+if command -v dkms > /dev/null 2>&1 && dkms status amneziawg 2>/dev/null | grep -q .; then
+  log "Removing amneziawg from DKMS..."
+  dkms remove amneziawg --all 2>/dev/null || true
+fi
+
 clone_or_pull "$AWG_MODULE_REPO" "$AWG_MODULE_DIR"
 cd "$AWG_MODULE_DIR/src"
 make -C "/lib/modules/$KERNEL/build" M="$(pwd)" clean 2>&1
