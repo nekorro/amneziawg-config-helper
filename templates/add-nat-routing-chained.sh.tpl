@@ -1,21 +1,22 @@
 #!/bin/bash
-# Chained mode: forward client traffic to exit-peer, no MASQUERADE on this server
+# Chained mode: forward peer traffic to exit-peer, no MASQUERADE on this interface.
 # Table=off in [Interface] prevents awg-quick from hijacking all host traffic.
-# We set up routing manually: only FORWARDED packets (iif = awg interface)
-# get routed back into the tunnel for the exit-peer via cryptokey routing.
+# Only FORWARDED packets (iif = awg interface) get routed back into the tunnel.
+
+IFACE=$(ip route show default | awk '{print $5; exit}')
 
 # Accept incoming AWG traffic
-$IPT -I INPUT 1 -i $IFACE -p udp --dport $SERVER_PORT -j ACCEPT
-$IPT -I INPUT 1 -i $SERVER_NAME -j ACCEPT
+iptables -I INPUT 1 -i "$IFACE" -p udp --dport $LISTEN_PORT -j ACCEPT
+iptables -I INPUT 1 -i $IF_NAME -j ACCEPT
 
-# Enable forwarding between AWG peers (client <-> exit-peer on same interface)
-$IPT -I FORWARD 1 -i $SERVER_NAME -o $SERVER_NAME -j ACCEPT
+# Enable forwarding between peers on the same interface
+iptables -I FORWARD 1 -i $IF_NAME -o $IF_NAME -j ACCEPT
 
 # Subnet route for the VPN network
-ip route add $SUBNET dev $SERVER_NAME
+ip route add $SUBNET dev $IF_NAME
 
-# Policy routing: packets arriving ON the AWG interface (from VPN clients)
+# Policy routing: packets arriving on the AWG interface (from peers)
 # get routed back through it (cryptokey routing picks the exit-peer).
-# Server's own traffic (SSH, etc.) is locally originated — has no iif — unaffected.
-ip route add default dev $SERVER_NAME table $SERVER_PORT
-ip rule add iif $SERVER_NAME table $SERVER_PORT priority 100
+# Locally originated traffic (SSH, etc.) has no iif — unaffected.
+ip route add default dev $IF_NAME table $LISTEN_PORT
+ip rule add iif $IF_NAME table $LISTEN_PORT priority 100
