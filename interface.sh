@@ -241,7 +241,7 @@ if [ "$ACTION" = "add-exit" ]; then
   chmod +x "$PATH_HELPERS"/add-nat.sh "$PATH_HELPERS"/remove-nat.sh
 
   S3S4_LINES=""
-  if [ "$NO_S3S4" -eq 0 ] && [ -n "$AWG_S3" ] && [ -n "$AWG_S4" ]; then
+  if [ -n "$AWG_S3" ] && [ -n "$AWG_S4" ]; then
     S3S4_LINES="S3 = $AWG_S3
 S4 = $AWG_S4"
   fi
@@ -415,7 +415,7 @@ if [ "$CHAINED" -eq 1 ]; then
   if [ -n "$AWG_S3" ] && [ -n "$AWG_S4" ]; then
     printf "    --s1 %s --s2 %s --s3 %s --s4 %s \\\\\n" "$AWG_S1" "$AWG_S2" "$AWG_S3" "$AWG_S4"
   else
-    printf "    --s1 %s --s2 %s --no-s3s4 \\\\\n" "$AWG_S1" "$AWG_S2"
+    printf "    --s1 %s --s2 %s \\\\\n" "$AWG_S1" "$AWG_S2"
   fi
   printf "    --h1 %s --h2 %s --h3 %s --h4 %s\n" "$AWG_H1" "$AWG_H2" "$AWG_H3" "$AWG_H4"
   printf "\n=== Routing ===\n"
@@ -441,7 +441,7 @@ sudo ./interface.sh --add-exit \\
   --peer-pub $PUBLIC_KEY \\
   --psk $EXIT_PSK \\
   --jc $AWG_JC --jmin 40 --jmax 70 \\
-  --s1 $AWG_S1 --s2 $AWG_S2$([ -n "$AWG_S3" ] && echo " --s3 $AWG_S3")$([ -n "$AWG_S4" ] && echo " --s4 $AWG_S4")$([ "$NO_S3S4" -eq 1 ] && echo " --no-s3s4") \\
+  --s1 $AWG_S1 --s2 $AWG_S2$([ -n "$AWG_S3" ] && echo " --s3 $AWG_S3")$([ -n "$AWG_S4" ] && echo " --s4 $AWG_S4") \\
   --h1 $AWG_H1 --h2 $AWG_H2 --h3 $AWG_H3 --h4 $AWG_H4
 SETUP_EOF
   chmod +x "${EXIT_NODE_DIR}/setup-exit-node.sh"
