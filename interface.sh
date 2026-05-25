@@ -133,6 +133,7 @@ if [ "$ACTION" = "remove" ]; then
   rm -f "$PATH_BASE/$IF_NAME.key"
   rm -f "$PATH_BASE/$IF_NAME.pub"
   rm -rf "$PATH_BASE/helpers/$IF_NAME"
+  rm -rf "$PATH_BASE/routes/$IF_NAME"
   rm -rf "$SCRIPT_DIR/clients/$IF_NAME"
 
   printf "Interface %s removed.\n" "$IF_NAME"
@@ -274,8 +275,11 @@ mkdir -p "$PATH_HELPERS"
 if [ "$CHAINED" -eq 1 ]; then
   EXIT_PEER_IP="${SUBNET_BASE%.*}.2"
   export EXIT_PEER_IP
-  envsubst '$IF_NAME $LISTEN_PORT $SUBNET' <"$SCRIPT_DIR"/templates/add-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
-  envsubst '$IF_NAME $LISTEN_PORT $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat-routing-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
+  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME"
+  export ROUTES_DIR
+  mkdir -p "$ROUTES_DIR"
+  envsubst '$IF_NAME $LISTEN_PORT $SUBNET $ROUTES_DIR' <"$SCRIPT_DIR"/templates/add-nat-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh
+  envsubst '$IF_NAME $LISTEN_PORT $SUBNET $ROUTES_DIR' <"$SCRIPT_DIR"/templates/remove-nat-chained.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
 else
   envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/add-nat.sh.tpl >"$PATH_HELPERS"/add-nat.sh
   envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
@@ -336,7 +340,14 @@ if [ "$CHAINED" -eq 1 ]; then
   printf "    --jc %s --jmin 40 --jmax 70 \\\\\n" "$AWG_JC"
   printf "    --s1 %s --s2 %s --s3 %s --s4 %s \\\\\n" "$AWG_S1" "$AWG_S2" "$AWG_S3" "$AWG_S4"
   printf "    --h1 %s --h2 %s --h3 %s --h4 %s\n" "$AWG_H1" "$AWG_H2" "$AWG_H3" "$AWG_H4"
-  printf "\nPeers will have no internet until the exit node connects.\n"
+  printf "\n=== Routing ===\n"
+  printf "Routes directory: %s\n" "$ROUTES_DIR"
+  printf "  Empty (default)  → all traffic exits via exit node (.2)\n"
+  printf "  With *.txt files → matching IPs exit via exit node, rest via this host (.1)\n"
+  printf "  Format: one CIDR per line, # for comments\n"
+  printf "  Example presets in repo: routes/youtube.txt, routes/discord.txt\n"
+  printf "  Copy presets: cp routes/youtube.txt %s/\n" "$ROUTES_DIR"
+  printf "  Apply changes: awg-quick down %s && awg-quick up %s\n" "$IF_NAME" "$IF_NAME"
 
   # Also save the command to a file for convenience
   cat >"${EXIT_NODE_DIR}/setup-exit-node.sh" <<SETUP_EOF
