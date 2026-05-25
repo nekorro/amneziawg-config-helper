@@ -198,6 +198,7 @@ export AWG_H4=$(config_get "H4")
 PEER_CONF="$PEERS_DIR/${PEER_NAME}.conf"
 mkdir -p "$PEERS_DIR"
 envsubst <"$SCRIPT_DIR"/templates/peer-client.conf.tpl >"$PEER_CONF"
+sed -i '/^S[34] = $/d' "$PEER_CONF"
 
 if awg show "$IF_NAME" > /dev/null 2>&1; then
   printf "Restarting interface %s\n" "$IF_NAME"

@@ -62,6 +62,7 @@ IF_NAME=""
 SUBNET_BASE=""
 LISTEN_PORT=""
 CHAINED=0
+NO_S3S4=0
 PRIVATE_KEY=""
 IF_ADDRESS=""
 ENDPOINT=""
@@ -82,6 +83,7 @@ while [ $# -gt 0 ]; do
     --subnet)      SUBNET_BASE="$2"; shift ;;
     --port)        LISTEN_PORT="$2"; shift ;;
     --chained)     CHAINED=1 ;;
+    --no-s3s4)     NO_S3S4=1 ;;
     --private-key) PRIVATE_KEY="$2"; shift ;;
     --address)     IF_ADDRESS="$2"; shift ;;
     --endpoint)    ENDPOINT="$2"; shift ;;
@@ -239,6 +241,12 @@ if [ "$ACTION" = "add-exit" ]; then
   envsubst '$IF_NAME $SUBNET' <"$SCRIPT_DIR"/templates/remove-nat.sh.tpl >"$PATH_HELPERS"/remove-nat.sh
   chmod +x "$PATH_HELPERS"/add-nat.sh "$PATH_HELPERS"/remove-nat.sh
 
+  S3S4_LINES=""
+  if [ "$NO_S3S4" -eq 0 ] && [ -n "$AWG_S3" ] && [ -n "$AWG_S4" ]; then
+    S3S4_LINES="S3 = $AWG_S3
+S4 = $AWG_S4"
+  fi
+
   cat >"$PATH_CONFIG" <<EOF
 [Interface]
 PrivateKey = $PRIVATE_KEY
@@ -250,9 +258,8 @@ Jmin = $AWG_JMIN
 Jmax = $AWG_JMAX
 S1 = $AWG_S1
 S2 = $AWG_S2
-S3 = $AWG_S3
-S4 = $AWG_S4
-H1 = $AWG_H1
+${S3S4_LINES:+$S3S4_LINES
+}H1 = $AWG_H1
 H2 = $AWG_H2
 H3 = $AWG_H3
 H4 = $AWG_H4
@@ -319,8 +326,10 @@ PUBLIC_KEY=$(echo "$PRIVATE_KEY" | awg pubkey)
 : "${AWG_JC:=$((((RANDOM << 15) | RANDOM) % 3 + 3))}"
 : "${AWG_S1:=$((((RANDOM << 15) | RANDOM) % 9 + 2))}"
 : "${AWG_S2:=$((((RANDOM << 15) | RANDOM) % 9 + 2))}"
-: "${AWG_S3:=$((((RANDOM << 15) | RANDOM) % 9 + 2))}"
-: "${AWG_S4:=$((((RANDOM << 15) | RANDOM) % 9 + 2))}"
+if [ "$NO_S3S4" -eq 0 ]; then
+  : "${AWG_S3:=$((((RANDOM << 15) | RANDOM) % 9 + 2))}"
+  : "${AWG_S4:=$((((RANDOM << 15) | RANDOM) % 9 + 2))}"
+fi
 : "${AWG_H1:=$((((RANDOM << 15) | RANDOM) % 294967295 + 1000000000))}"
 : "${AWG_H2:=$((((RANDOM << 15) | RANDOM) % 294967295 + 2000000000))}"
 : "${AWG_H3:=$((((RANDOM << 15) | RANDOM) % 294967295 + 3000000000))}"
@@ -367,6 +376,8 @@ export AWG_H4
 export PATH_HELPERS
 
 envsubst <"$SCRIPT_DIR"/templates/interface.conf.tpl >"$PATH_CONFIG"
+# Remove S3/S4 lines if empty (unsupported by older AWG builds)
+sed -i '/^S[34] = $/d' "$PATH_CONFIG"
 
 if [ "$CHAINED" -eq 1 ]; then
   sed -i '/^\[Interface\]/a Table = off' "$PATH_CONFIG"
@@ -402,7 +413,11 @@ if [ "$CHAINED" -eq 1 ]; then
   printf "    --peer-pub %s \\\\\n" "$PUBLIC_KEY"
   printf "    --psk %s \\\\\n" "$EXIT_PSK"
   printf "    --jc %s --jmin 40 --jmax 70 \\\\\n" "$AWG_JC"
-  printf "    --s1 %s --s2 %s --s3 %s --s4 %s \\\\\n" "$AWG_S1" "$AWG_S2" "$AWG_S3" "$AWG_S4"
+  if [ -n "$AWG_S3" ] && [ -n "$AWG_S4" ]; then
+    printf "    --s1 %s --s2 %s --s3 %s --s4 %s \\\\\n" "$AWG_S1" "$AWG_S2" "$AWG_S3" "$AWG_S4"
+  else
+    printf "    --s1 %s --s2 %s --no-s3s4 \\\\\n" "$AWG_S1" "$AWG_S2"
+  fi
   printf "    --h1 %s --h2 %s --h3 %s --h4 %s\n" "$AWG_H1" "$AWG_H2" "$AWG_H3" "$AWG_H4"
   printf "\n=== Routing ===\n"
   printf "Routes directory: %s\n" "$ROUTES_DIR"
@@ -427,7 +442,7 @@ sudo ./interface.sh --add-exit \\
   --peer-pub $PUBLIC_KEY \\
   --psk $EXIT_PSK \\
   --jc $AWG_JC --jmin 40 --jmax 70 \\
-  --s1 $AWG_S1 --s2 $AWG_S2 --s3 $AWG_S3 --s4 $AWG_S4 \\
+  --s1 $AWG_S1 --s2 $AWG_S2$([ -n "$AWG_S3" ] && echo " --s3 $AWG_S3")$([ -n "$AWG_S4" ] && echo " --s4 $AWG_S4")$([ "$NO_S3S4" -eq 1 ] && echo " --no-s3s4") \\
   --h1 $AWG_H1 --h2 $AWG_H2 --h3 $AWG_H3 --h4 $AWG_H4
 SETUP_EOF
   chmod +x "${EXIT_NODE_DIR}/setup-exit-node.sh"
