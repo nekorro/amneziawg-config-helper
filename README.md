@@ -103,6 +103,14 @@ Creates an exit-node interface from the provided parameters (no key generation).
 
 When you create a chained interface, the script prints the exact `--add-exit` command to run on the exit node host — just copy and paste it.
 
+#### Reload exit routes
+
+```bash
+sudo ./interface.sh --reload-routes --name <name>
+```
+
+Hot-reloads the exit routes ipset from `/etc/amnezia/amneziawg/routes/<name>/` without restarting the interface or disconnecting peers. Only works when already in split-chained mode; switching between full-chain and split modes requires an interface restart.
+
 #### Remove an interface
 
 ```bash
@@ -220,7 +228,13 @@ sudo tee /etc/amnezia/amneziawg/routes/awg0/custom.txt <<EOF
 EOF
 ```
 
-2. Restart the interface:
+2. Apply the routes (no peer disconnection):
+
+```bash
+sudo ./interface.sh --reload-routes --name awg0
+```
+
+Or restart the interface if switching between full-chain and split modes:
 
 ```bash
 sudo awg-quick down awg0 && sudo awg-quick up awg0
