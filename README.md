@@ -242,7 +242,35 @@ sudo awg-quick down awg0 && sudo awg-quick up awg0
 
 To switch back to full-chain (all traffic via exit node), remove all files from the routes directory and restart.
 
-Preset route files for common services are shipped in the `routes/` directory of this repo.
+Preset route files and fetch scripts are shipped in the `routes/` directory of this repo.
+
+#### Fetching routes from iplist.opencck.org
+
+The `fetch-iplist.opencck.sh` script downloads IP ranges for service groups from [iplist.opencck.org](https://github.com/rekryt/iplist):
+
+```bash
+# All Russian services (default: groups vk, russia, yandex)
+sudo ./routes/fetch-iplist.opencck.sh > /etc/amnezia/amneziawg/routes/awg0/local/ru-services.txt
+
+# Specific groups
+sudo ./routes/fetch-iplist.opencck.sh --group vk --group yandex > /etc/amnezia/amneziawg/routes/awg0/local/vk-yandex.txt
+
+# Global instance (blocked services)
+sudo ./routes/fetch-iplist.opencck.sh --base-url https://iplist.opencck.org --group youtube \
+  > /etc/amnezia/amneziawg/routes/awg0/local/youtube.txt
+
+# Apply
+sudo ./interface.sh --reload-routes --name awg0
+```
+
+#### Fetching routes by country
+
+The `fetch-country.sh` script downloads all IP ranges for a country from the 5 regional internet registries:
+
+```bash
+sudo ./routes/fetch-country.sh RU > /etc/amnezia/amneziawg/routes/awg0/local/ru.txt
+sudo ./interface.sh --reload-routes --name awg0
+```
 
 ### Running multiple interfaces on one host
 
@@ -265,11 +293,13 @@ You can run both an exit node and a chained interface on the same host. They don
 │       ├── laptop.conf
 │       └── exit_node/      # Chained mode only
 │           └── setup-exit-node.sh
-├── routes/                 # Preset route files for split-chained mode
+├── routes/                 # Route presets and fetch scripts
 │   ├── example.txt
 │   ├── youtube.txt
 │   ├── discord.txt
-│   └── cloudflare.txt
+│   ├── cloudflare.txt
+│   ├── fetch-iplist.opencck.sh  # Fetch IPs by service group
+│   └── fetch-country.sh         # Fetch IPs by country code
 └── templates/              # envsubst templates
     ├── interface.conf.tpl
     ├── peer-client.conf.tpl
