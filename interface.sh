@@ -130,7 +130,7 @@ if [ "$ACTION" = "reload-routes" ]; then
     exit 1
   fi
 
-  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME"
+  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME/local"
   IPSET_NAME="${IF_NAME}_direct"
 
   # Collect CIDRs from routes directory
@@ -339,7 +339,7 @@ mkdir -p "$PATH_HELPERS"
 if [ "$CHAINED" -eq 1 ]; then
   EXIT_PEER_IP="${SUBNET_BASE%.*}.2"
   export EXIT_PEER_IP
-  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME"
+  ROUTES_DIR="$PATH_BASE/routes/$IF_NAME/local"
   export ROUTES_DIR
   mkdir -p "$ROUTES_DIR"
   envsubst '$IF_NAME $LISTEN_PORT $SUBNET $ROUTES_DIR' <"$SCRIPT_DIR"/templates/add-nat-chained.sh.tpl >"$PATH_HELPERS"/add-nat.sh

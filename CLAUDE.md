@@ -51,6 +51,6 @@ awg-quick down <name>
 - AWG obfuscation params: Jc, Jmin, Jmax, S1-S4, H1-H4 — can be overridden via CLI args
 - Templates use `envsubst` for variable substitution — variables must be exported before calling envsubst
 - Shared NAT templates use explicit var list (`envsubst '$VPN_IF $SUBNET'`) to avoid baking runtime vars
-- Chained routes dir: `/etc/amnezia/amneziawg/routes/<if_name>/` — empty = full-chain, with *.txt CIDRs = split-chain
+- Chained routes dir: `/etc/amnezia/amneziawg/routes/<if_name>/local/` — empty = full-chain, with *.txt CIDRs = direct exit on .1
 - Split-chained uses ipset + iptables MARK + fwmark policy routing
 - `install.sh` logs are bilingual (Russian descriptions)

@@ -1,6 +1,6 @@
 # Route preset file for AmneziaWG split-chained mode
 #
-# Place *.txt files in /etc/amnezia/amneziawg/routes/<interface_name>/
+# Place *.txt files in /etc/amnezia/amneziawg/routes/<interface_name>/local/
 # to route matching destinations DIRECTLY via the intermediate host (.1)
 # instead of through the exit node (.2).
 #
