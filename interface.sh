@@ -28,7 +28,11 @@ Parameters (--add):
   --name      Interface name (max 30 chars)
   --subnet    VPN subnet base (e.g. 10.8.1.0); must be 10.x.x.x or 192.168.x.x
   --port      UDP listen port (1025-32767)
-  --chained   Forward traffic to exit-peer .2 instead of MASQUERADE
+  --chained   Forward traffic to exit-peer .2. By default all traffic goes
+              to exit node. Place CIDR lists (*.txt) in the routes directory
+              to selectively route only matching IPs via exit node;
+              the rest exits via MASQUERADE on this host.
+              Routes dir: /etc/amnezia/amneziawg/routes/<name>/
 
 Parameters (--add-exit):
   --name        Interface name

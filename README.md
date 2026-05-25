@@ -202,6 +202,34 @@ A convenience script is also saved to `./clients/<name>/exit_node/setup-exit-nod
 
 Peers have no internet access until the exit node connects.
 
+### Split-chained (selective routing)
+
+By default, chained mode routes all traffic through the exit node. To route only specific destinations through the exit node and exit everything else on the intermediate host:
+
+1. Place `*.txt` files with CIDRs into the routes directory:
+
+```bash
+# Copy a preset
+sudo cp routes/youtube.txt /etc/amnezia/amneziawg/routes/awg0/
+
+# Or create your own
+sudo tee /etc/amnezia/amneziawg/routes/awg0/custom.txt <<EOF
+# Custom routes via exit node
+203.0.113.0/24
+198.51.100.0/24
+EOF
+```
+
+2. Restart the interface:
+
+```bash
+sudo awg-quick down awg0 && sudo awg-quick up awg0
+```
+
+To switch back to full-chain (all traffic via exit node), remove all files from the routes directory and restart.
+
+Preset route files for common services are shipped in the `routes/` directory of this repo.
+
 ### Running multiple interfaces on one host
 
 You can run both an exit node and a chained interface on the same host. They don't interfere:
@@ -223,6 +251,11 @@ You can run both an exit node and a chained interface on the same host. They don
 │       ├── laptop.conf
 │       └── exit_node/      # Chained mode only
 │           └── setup-exit-node.sh
+├── routes/                 # Preset route files for split-chained mode
+│   ├── example.txt
+│   ├── youtube.txt
+│   ├── discord.txt
+│   └── cloudflare.txt
 └── templates/              # envsubst templates
     ├── interface.conf.tpl
     ├── peer-client.conf.tpl
@@ -230,8 +263,9 @@ You can run both an exit node and a chained interface on the same host. They don
     ├── peer-exit.part.tpl
     ├── add-nat.sh.tpl
     ├── remove-nat.sh.tpl
-    ├── add-nat-routing-chained.sh.tpl
-    └── remove-nat-routing-chained.sh.tpl
+    ├── add-nat-chained.sh.tpl
+    ...
+    └── remove-nat-chained.sh.tpl
 ```
 
 Configs and keys are stored in `/etc/amnezia/amneziawg/`. NAT helper scripts go to `/etc/amnezia/amneziawg/helpers/<interface_name>/`.
