@@ -195,6 +195,12 @@ if [ "$ACTION" = "remove" ]; then
     awg-quick down "$IF_NAME"
   fi
 
+  # Remove this interface's persisted forwarding/NAT (subnet read from its NAT helper).
+  DEL_SUBNET=$(grep -oE -- '-s [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' "$PATH_BASE/helpers/$IF_NAME/add-nat.sh" 2>/dev/null | head -1 | awk '{print $2}')
+  if [ -n "$DEL_SUBNET" ]; then
+    "$SCRIPT_DIR/persist-forwarding.sh" --remove "$DEL_SUBNET" || true
+  fi
+
   rm -f "$PATH_CONFIG"
   rm -f "$PATH_BASE/$IF_NAME.key"
   rm -f "$PATH_BASE/$IF_NAME.pub"
@@ -251,11 +257,15 @@ if [ "$ACTION" = "add-exit" ]; then
 S4 = $AWG_S4"
   fi
 
+  # NOTE: deliberately NO "DNS =" line. This is a split-tunnel exit interface
+  # (AllowedIPs = $SUBNET only). A DNS= line makes awg-quick register a catch-all
+  # (~.) resolver on this link in systemd-resolved, binding ALL host DNS to this
+  # interface — but the resolver IP is not inside AllowedIPs, so queries black-hole
+  # and the host loses DNS ("Temporary failure resolving"). Leave host DNS alone.
   cat >"$PATH_CONFIG" <<EOF
 [Interface]
 PrivateKey = $PRIVATE_KEY
 Address = $IF_ADDRESS/32
-DNS = 1.1.1.1, 1.0.0.1
 MTU = 1420
 Jc = $AWG_JC
 Jmin = $AWG_JMIN
@@ -281,6 +291,8 @@ EOF
   printf "Exit-node interface %s configured.\n" "$IF_NAME"
   printf "Starting interface %s\n" "$IF_NAME"
   awg-quick up "$IF_NAME"
+  # Persist forwarding + NAT for this subnet so it survives firewall reloads/reboots.
+  "$SCRIPT_DIR/persist-forwarding.sh" --add "$SUBNET" || echo "WARNING: persist-forwarding failed for $SUBNET (check firewall)"
   exit 0
 fi
 
@@ -454,3 +466,9 @@ fi
 
 printf "\nStarting interface %s\n" "$IF_NAME"
 awg-quick up "$IF_NAME"
+
+# Persist forwarding + NAT for this subnet (non-chained mode only; chained mode
+# uses policy routing and manages its own egress rules).
+if [ "$CHAINED" -eq 0 ]; then
+  "$SCRIPT_DIR/persist-forwarding.sh" --add "$SUBNET" || echo "WARNING: persist-forwarding failed for $SUBNET (check firewall)"
+fi
